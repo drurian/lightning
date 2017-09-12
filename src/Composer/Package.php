@@ -27,6 +27,8 @@ class Package {
     $bin_dir = $composer->getConfig()->get('bin-dir');
     $make = NULL;
     $executor = new ProcessExecutor();
+    // @todo: make-convert no longer exists in drush 9. Need to extract that
+    // functionality from drush.
     $executor->execute($bin_dir . '/drush make-convert composer.lock', $make);
     $make = Yaml::parse($make);
 

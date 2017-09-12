@@ -7,28 +7,16 @@
 
 use Acquia\LightningExtension\Context\CkEditorContext;
 use Acquia\LightningExtension\Context\EntityBrowserContext;
+use Acquia\LightningExtension\AwaitTrait;
 use Drupal\DrupalExtension\Context\DrupalSubContextBase;
+use Drupal\DrupalExtension\Context\MinkContext;
 
 /**
  * Contains step definitions for testing the CKEditor media widget.
  */
 class MediaLibrarySubContext extends DrupalSubContextBase {
 
-  /**
-   * The Mink context.
-   *
-   * @var \Drupal\DrupalExtension\Context\MinkContext
-   */
-  protected $minkContext;
-
-  /**
-   * Pre-scenario hook.
-   *
-   * @BeforeScenario
-   */
-  public function gatherContexts() {
-    $this->minkContext = $this->getContext('\Drupal\DrupalExtension\Context\MinkContext');
-  }
+  use AwaitTrait;
 
   /**
    * Waits for a JavaScript condition to become truthy.
@@ -66,7 +54,7 @@ class MediaLibrarySubContext extends DrupalSubContextBase {
       ->getContext(CkEditorContext::class)
       ->execute('editdrupalentity', NULL, ['id' => $button]);
 
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
     $frame = 'entity_browser_iframe_' . $button;
     $this->awaitElement('iframe[name="' . $frame . '"]', 30);
     $this->getSession()->switchToIFrame($frame);
@@ -99,17 +87,17 @@ class MediaLibrarySubContext extends DrupalSubContextBase {
     $session->switchToWindow();
     $session->executeScript('window.frames.entity_browser_iframe_media_browser.document.forms[0].elements.op.click()');
     $this->awaitExpression('!window.frames.entity_browser_iframe_media_browser');
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
     $this->awaitElement('form.entity-embed-dialog');
     $session->executeScript('document.querySelector("form.entity-embed-dialog").elements.op[1].click()');
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
   }
 
   /**
    * Waits for the inline entity form (containing required fields) to exist.
    */
   protected function awaitEntityForm() {
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
     $this->awaitExpression('jQuery("#entity").children().length');
   }
 
@@ -122,8 +110,9 @@ class MediaLibrarySubContext extends DrupalSubContextBase {
    * @When I upload :file
    */
   public function upload($file) {
-    $this->minkContext->clickLink('Upload');
-    $this->minkContext->attachFileToField('File', $file);
+    $minkContext = $this->getContext(MinkContext::class);
+    $minkContext->clickLink('Upload');
+    $minkContext->attachFileToField('File', $file);
     $this->awaitEntityForm();
   }
 
@@ -143,7 +132,8 @@ class MediaLibrarySubContext extends DrupalSubContextBase {
       ->elementExists('css', 'nav.eb-tabs ul li a[data-button-id="edit-tab-selector-8b142f33-59d1-47b1-9e3a-4ae85d8376fa"]')
       ->click();
 
-    $this->minkContext->fillField('input', $code);
+    $minkContext = $this->getContext(MinkContext::class);
+    $minkContext->fillField('input', $code);
     // The change event, which triggers AJAX, is fired automatically after 600
     // milliseconds.
     sleep(1);
