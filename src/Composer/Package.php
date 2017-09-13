@@ -76,46 +76,40 @@ class Package {
   }
 
   protected function convert() {
-    $info = array(
-      'core' => array(),
+    $info = [
+      'core' => [],
       'api' => 2,
-      'defaults' => array(
-        'projects' => array(
+      'defaults' => [
+        'projects' => [
           'subdir' => 'contrib',
-        ),
-      ),
-      'projects' => array(),
-      'libraries' => array(),
-    );
+        ],
+      ],
+      'projects' => [],
+      'libraries' => [],
+    ];
 
     // The make generation function requires that projects be grouped by type,
     // or else duplicative project groups will be created.
-    $core = array();
-    $modules = array();
-    $themes = array();
-    $libraries = array();
+    $core = $modules = $themes = $libraries = [];
     foreach ($this->locker->getLockData()['packages'] as $package) {
-      if (strpos($package['name'], 'drupal/') === 0 && in_array($package['type'], array('drupal-core', 'drupal-theme', 'drupal-module', 'drupal-profile'))) {
+      if ($this->isDrupalPackage($package)) {
         $project_name = str_replace('drupal/', '', $package['name']);
 
         switch ($package['type']) {
           case 'drupal-core':
             $project_name = 'drupal';
             $group =& $core;
-            $group[$project_name]['type'] = 'core';
             $info['core'] = '8.x';
             break;
           case 'drupal-theme':
             $group =& $themes;
-            $group[$project_name]['type'] = 'theme';
             break;
           case 'drupal-module':
             $group =& $modules;
-            $group[$project_name]['type'] = 'module';
             break;
         }
 
-        $group[$project_name] += $this->makePackage($package);
+        $group[$project_name] = $this->makeDrupalPackage($package);
 
         // Dev versions should use git branch + revision, otherwise a tag is used.
         if (strstr($package['version'], 'dev')) {
@@ -155,6 +149,19 @@ class Package {
     return $info;
   }
 
+  protected function makeDrupalPackage(array $package) {
+    $info = [];
+
+    switch ($package['type']) {
+      case 'drupal-core':
+      case 'drupal-theme':
+      case 'drupal-module':
+        $info['type'] = substr($package['type'], 7);
+        break;
+    }
+    return $info + $this->makePackage($package);
+  }
+
   protected function makePackage(array $package) {
     $info = [
       'download' => [
@@ -169,6 +176,29 @@ class Package {
       $info['patch'] = array_values($package['extra']['patches_applied']);
     }
     return $info;
+  }
+
+  /**
+   * Determines if a package is a Drupal core, module, theme, or profile.
+   *
+   * @param array $package
+   *   The package info.
+   *
+   * @return bool
+   *   TRUE if the package is a Drupal core, module, theme, or profile;
+   *   otherwise FALSE.
+   */
+  protected function isDrupalPackage(array $package) {
+    $package_types = [
+      'drupal-core',
+      'drupal-module',
+      'drupal-theme',
+      'drupal-profile',
+    ];
+    return (
+      strpos($package['name'], 'drupal/') === 0 &&
+      in_array($package['type'], $package_types)
+    );
   }
 
   /**
