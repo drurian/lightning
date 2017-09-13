@@ -111,6 +111,19 @@ class EntitySubContext extends DrupalSubContextBase {
   }
 
   /**
+   * Queues a user to be deleted at the end of the scenario.
+   *
+   * @param \Drupal\DrupalExtension\Hook\Scope\EntityScope $scope
+   *   The hook scope.
+   *
+   * @afterUserCreate
+   */
+  public function queueUser(EntityScope $scope) {
+    $user = User::load($scope->getEntity()->uid);
+    $this->queueEntity($user);
+  }
+
+  /**
    * Queues an entity to be deleted at the end of the scenario.
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
