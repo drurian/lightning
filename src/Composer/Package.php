@@ -43,12 +43,11 @@ class Package {
 
     foreach ($make['projects'] as $key => &$project) {
       if ($project['download']['type'] == 'git') {
-        $tag = $project['download']['tag'];
-        preg_match('/\d+\.x-\d+\.0/', $tag, $match);
-        $tag = str_replace($match, str_replace('x-', NULL, $match), $tag);
-        preg_match('/\d+\.\d+\.0/', $tag, $match);
-        $tag = str_replace($match, substr($match[0], 0, -2), $tag);
-        $project['version'] = $tag;
+        $project['version'] = preg_replace(
+          '/^([0-9]+)\.x-([0-9]+)\.[0-9]+(-.+)?/',
+          '$1.$2$3',
+          $project['download']['tag']
+        );
         unset($project['download']);
       }
     }
