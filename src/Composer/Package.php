@@ -47,13 +47,13 @@ class Package {
     $project = $make['projects']['drupal'];
     unset($make['projects']['drupal']);
 
-    $info = [
+    return [
       'core' => $make['core'],
       'api' => $make['api'],
+      'projects' => [
+        'drupal' => $project,
+      ],
     ];
-    $info['projects']['drupal'] = $project;
-
-    return $info;
   }
 
   protected function make() {
