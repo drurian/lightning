@@ -37,28 +37,9 @@ class Package {
 
     $encoder = new IniEncoder();
 
-    $make = $handler->convert();
-
-    if (isset($make['projects']['drupal'])) {
-      // Always use drupal.org's core repository, or patches will not apply.
-      $make['projects']['drupal']['download']['url'] = 'https://git.drupal.org/project/drupal.git';
-
-      $core = [
-        'api' => 2,
-        'core' => '8.x',
-        'projects' => [
-          'drupal' => [
-            'type' => 'core',
-            'version' => $make['projects']['drupal']['download']['tag'],
-          ],
-        ],
-      ];
-      if (isset($make['projects']['drupal']['patch'])) {
-        $core['projects']['drupal']['patch'] = $make['projects']['drupal']['patch'];
-      }
-      file_put_contents('drupal-org-core.make', $encoder->encode($core));
-      unset($make['projects']['drupal']);
-    }
+    $make = $handler->make();
+    $core = $handler->makeCore($make);
+    file_put_contents('drupal-org-core.make', $encoder->encode($core));
 
     foreach ($make['projects'] as $key => &$project) {
       if ($project['download']['type'] == 'git') {
@@ -75,7 +56,23 @@ class Package {
     file_put_contents('drupal-org.make', $encoder->encode($make));
   }
 
-  protected function convert() {
+  protected function makeCore(array &$make) {
+    $project = $make['projects']['drupal'];
+    unset($make['projects']['drupal']);
+
+    $project['version'] = $project['download']['tag'];
+    unset($project['download']);
+
+    $info = [
+      'core' => $make['core'],
+      'api' => $make['api'],
+    ];
+    $info['projects']['drupal'] = $project;
+
+    return $info;
+  }
+
+  protected function make() {
     $info = [
       'core' => '8.x',
       'api' => 2,
@@ -97,25 +94,25 @@ class Package {
         if ($package['type'] == 'drupal-core') {
           $name = 'drupal';
         }
-        $info['projects'][$name] = $this->makeProject($package);
+        $info['projects'][$name] = $this->buildProject($package);
       }
       // Include any non-drupal libraries that exist in both .lock and .json.
       elseif ($this->isLibrary($package)) {
-        $info['libraries'][$name] = $this->makeLibrary($package);
+        $info['libraries'][$name] = $this->buildLibrary($package);
       }
     }
 
     return $info;
   }
 
-  protected function makeLibrary(array $package) {
+  protected function buildLibrary(array $package) {
     $info = [
       'type' => 'library',
     ];
-    return $info + $this->makePackage($package);
+    return $info + $this->buildPackage($package);
   }
 
-  protected function makeProject(array $package) {
+  protected function buildProject(array $package) {
     $info = [];
 
     switch ($package['type']) {
@@ -125,7 +122,7 @@ class Package {
         $info['type'] = substr($package['type'], 7);
         break;
     }
-    $info += $this->makePackage($package);
+    $info += $this->buildPackage($package);
 
     // Dev versions should use git branch + revision, otherwise a tag is used.
     if (strstr($package['version'], 'dev')) {
@@ -156,7 +153,7 @@ class Package {
     return $info;
   }
 
-  protected function makePackage(array $package) {
+  protected function buildPackage(array $package) {
     $info = [
       'download' => [
         'type' => 'git',
