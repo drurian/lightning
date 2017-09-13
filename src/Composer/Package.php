@@ -90,7 +90,7 @@ class Package {
 
     // The make generation function requires that projects be grouped by type,
     // or else duplicative project groups will be created.
-    $core = $modules = $themes = $libraries = [];
+    $projects = $libraries = [];
     foreach ($this->locker->getLockData()['packages'] as $package) {
       if ($this->isDrupalPackage($package)) {
         $project_name = str_replace('drupal/', '', $package['name']);
@@ -98,18 +98,13 @@ class Package {
         switch ($package['type']) {
           case 'drupal-core':
             $project_name = 'drupal';
-            $group =& $core;
             $info['core'] = '8.x';
             break;
-          case 'drupal-theme':
-            $group =& $themes;
-            break;
-          case 'drupal-module':
-            $group =& $modules;
+          default:
             break;
         }
 
-        $group[$project_name] = $this->makeDrupalPackage($package);
+        $projects[$project_name] = $this->makeDrupalPackage($package);
 
         // Dev versions should use git branch + revision, otherwise a tag is used.
         if (strstr($package['version'], 'dev')) {
@@ -117,22 +112,22 @@ class Package {
           // the branch name is sufficient.
           // @see https://getcomposer.org/doc/articles/aliases.md
           if (strpos($package['version'], 'dev-') === 0) {
-            $group[$project_name]['download']['branch'] = substr($package['version'], 4);
+            $projects[$project_name]['download']['branch'] = substr($package['version'], 4);
           }
           // Otherwise, leave as is. Version may already use '-dev' suffix.
           else {
-            $group[$project_name]['download']['branch'] = $package['version'];
+            $projects[$project_name]['download']['branch'] = $package['version'];
           }
-          $group[$project_name]['download']['revision'] = $package['source']['reference'];
+          $projects[$project_name]['download']['revision'] = $package['source']['reference'];
         }
         elseif ($package['type'] == 'drupal-core') {
-          $group[$project_name]['download']['tag'] = $package['version'];
+          $projects[$project_name]['download']['tag'] = $package['version'];
         }
         else {
           // Make tag versioning drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
           $major_version = substr($package['version'], 0 ,1);
           $the_rest = substr($package['version'], 2, strlen($package['version']));
-          $group[$project_name]['download']['tag'] = "$major_version.x-$the_rest";
+          $projects[$project_name]['download']['tag'] = "$major_version.x-$the_rest";
         }
       }
       // Include any non-drupal libraries that exist in both .lock and .json.
@@ -143,7 +138,7 @@ class Package {
       }
     }
 
-    $info['projects'] = $core + $modules + $themes;
+    $info['projects'] = $projects;
     $info['libraries'] = $libraries;
 
     return $info;
