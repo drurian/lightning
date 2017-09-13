@@ -39,24 +39,6 @@ class Package {
 
     $make = $handler->convert();
 
-    // Include any library packages in the make file.
-    $library_types = [
-      'drupal-library',
-      'bower-asset',
-      'npm-asset',
-    ];
-    $packages = $composer->getRepositoryManager()->getLocalRepository()->getPackages();
-
-    // Drop the vendor prefixes.
-    foreach ($packages as $package) {
-      if (in_array($package->getType(), $library_types)) {
-        $old_key = $package->getName();
-        $new_key = basename($old_key);
-        $make['libraries'][$new_key] = $make['libraries'][$old_key];
-        unset($make['libraries'][$old_key]);
-      }
-    }
-
     if (isset($make['projects']['drupal'])) {
       // Always use drupal.org's core repository, or patches will not apply.
       $make['projects']['drupal']['download']['url'] = 'https://git.drupal.org/project/drupal.git';
@@ -177,9 +159,8 @@ class Package {
         }
       }
       // Include any non-drupal libraries that exist in both .lock and .json.
-      elseif (!in_array($package['type'], array('composer-plugin', 'metapackage'))
-        && array_key_exists($package['name'], $this->rootPackage->getRequires())) {
-        $project_name = $package['name'];
+      elseif ($this->isLibrary($package)) {
+        list(, $project_name) = explode('/', $package['name'], 2);
         $libraries[$project_name]['type'] = 'library';
         $libraries[$project_name]['download']['type'] = 'git';
         $libraries[$project_name]['download']['url'] = $package['source']['url'];
@@ -192,6 +173,27 @@ class Package {
     $info['libraries'] = $libraries;
 
     return $info;
+  }
+
+  /**
+   * Determines if a package is an asset library.
+   *
+   * @param array $package
+   *   The package info.
+   *
+   * @return bool
+   *   TRUE if the package is an asset library, otherwise FALSE.
+   */
+  protected function isLibrary(array $package) {
+    $package_types = [
+      'drupal-library',
+      'bower-asset',
+      'npm-asset',
+    ];
+    return (
+      in_array($package['type'], $package_types) &&
+      array_key_exists($package['name'], $this->rootPackage->getRequires())
+    );
   }
 
 }
