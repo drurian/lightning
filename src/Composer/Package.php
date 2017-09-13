@@ -137,13 +137,7 @@ class Package {
           $group[$project_name]['download']['revision'] = $package['source']['reference'];
         }
         elseif ($package['type'] == 'drupal-core') {
-          // For 7.x tags, replace 7.xx.0 with 7.xx.
-          if ($info['core'] == '7.x') {
-            $group[$project_name]['download']['tag']= substr($package['version'], 0, 4);
-          }
-          else {
-            $group[$project_name]['download']['tag'] = $package['version'];
-          }
+          $group[$project_name]['download']['tag'] = $package['version'];
         }
         else {
           // Make tag versioning drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
