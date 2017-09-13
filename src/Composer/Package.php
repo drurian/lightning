@@ -103,7 +103,7 @@ class Package {
             $project_name = 'drupal';
             $group =& $core;
             $group[$project_name]['type'] = 'core';
-            $info['core'] = substr($package['version'], 0, 1) . '.x';
+            $info['core'] = '8.x';
             break;
           case 'drupal-theme':
             $group =& $themes;
@@ -140,12 +140,6 @@ class Package {
           $the_rest = substr($package['version'], 2, strlen($package['version']));
           $group[$project_name]['download']['tag'] = "$major_version.x-$the_rest";
         }
-
-        if (!empty($package['extra']['patches_applied'])) {
-          foreach ($package['extra']['patches_applied'] as $desc => $url) {
-            $group[$project_name]['patch'][] = $url;
-          }
-        }
       }
       // Include any non-drupal libraries that exist in both .lock and .json.
       elseif ($this->isLibrary($package)) {
@@ -162,7 +156,7 @@ class Package {
   }
 
   protected function makePackage(array $package) {
-    return [
+    $info = [
       'download' => [
         'type' => 'git',
         'url' => $package['source']['url'],
@@ -170,6 +164,11 @@ class Package {
         'revision' => $package['source']['reference'],
       ],
     ];
+
+    if (isset($package['extra']['patches_applied'])) {
+      $info['patch'] = array_values($package['extra']['patches_applied']);
+    }
+    return $info;
   }
 
   /**
