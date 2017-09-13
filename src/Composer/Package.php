@@ -40,27 +40,12 @@ class Package {
     $make = $handler->make();
     $core = $handler->makeCore($make);
     file_put_contents('drupal-org-core.make', $encoder->encode($core));
-
-    foreach ($make['projects'] as $key => &$project) {
-      if ($project['download']['type'] == 'git') {
-        $project['version'] = preg_replace(
-          '/^([0-9]+)\.x-([0-9]+)\.[0-9]+(-.+)?/',
-          '$1.$2$3',
-          $project['download']['tag']
-        );
-        unset($project['download']);
-      }
-    }
-
     file_put_contents('drupal-org.make', $encoder->encode($make));
   }
 
   protected function makeCore(array &$make) {
     $project = $make['projects']['drupal'];
     unset($make['projects']['drupal']);
-
-    $project['version'] = $project['download']['tag'];
-    unset($project['download']);
 
     $info = [
       'core' => $make['core'],
@@ -137,16 +122,25 @@ class Package {
       }
       $info['download']['revision'] = $package['source']['reference'];
     }
-    elseif ($package['type'] == 'drupal-core') {
-      // Always use drupal.org's core repository, or patches will not apply.
-      $info['download']['url'] = 'https://git.drupal.org/project/drupal.git';
-      $info['download']['tag'] = $package['version'];
-    }
     else {
-      // Make tag versioning Drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
-      $major_version = substr($package['version'], 0 ,1);
-      $the_rest = substr($package['version'], 2, strlen($package['version']));
-      $info['download']['tag'] = "$major_version.x-$the_rest";
+      if ($package['type'] == 'drupal-core') {
+        $version = $package['version'];
+      }
+      else {
+        // Make tag versioning Drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
+        $version = sprintf(
+          '%d.x-%s',
+          $package['version']{0},
+          substr($package['version'], 2)
+        );
+      }
+      // Make the version Drush make-compatible: 1.x-13.0-beta2 --> 1.13-beta2
+      $info['version'] = preg_replace(
+        '/^([0-9]+)\.x-([0-9]+)\.[0-9]+(-.+)?/',
+        '$1.$2$3',
+        $version
+      );
+      unset($info['download']);
     }
 
     return $info;
