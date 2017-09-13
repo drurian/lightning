@@ -3,15 +3,23 @@
 namespace Acquia\Lightning\Composer;
 
 use Acquia\Lightning\IniEncoder;
-use Composer\Package\PackageInterface;
+use Composer\Package\Locker;
+use Composer\Package\RootPackageInterface;
 use Composer\Script\Event;
-use Composer\Util\ProcessExecutor;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Generates Drush make files for drupal.org's ancient packaging system.
  */
 class Package {
+
+  protected $rootPackage;
+
+  protected $locker;
+
+  public function __construct(RootPackageInterface $root_package, Locker $locker) {
+    $this->rootPackage = $root_package;
+    $this->locker = $locker;
+  }
 
   /**
    * Script entry point.
@@ -21,16 +29,15 @@ class Package {
    */
   public static function execute(Event $event) {
     $composer = $event->getComposer();
+
+    $handler = new static(
+      $composer->getPackage(),
+      $composer->getLocker()
+    );
+
     $encoder = new IniEncoder();
 
-    // Convert the lock file to a make file using Drush's make-convert command.
-    $bin_dir = $composer->getConfig()->get('bin-dir');
-    $make = NULL;
-    $executor = new ProcessExecutor();
-    // @todo: make-convert no longer exists in drush 9. Need to extract that
-    // functionality from drush.
-    $executor->execute($bin_dir . '/drush make-convert composer.lock', $make);
-    $make = Yaml::parse($make);
+    $make = $handler->convert();
 
     // Include any library packages in the make file.
     $library_types = [
@@ -84,6 +91,107 @@ class Package {
     }
 
     file_put_contents('drupal-org.make', $encoder->encode($make));
+  }
+
+  protected function convert() {
+    $info = array(
+      'core' => array(),
+      'api' => 2,
+      'defaults' => array(
+        'projects' => array(
+          'subdir' => 'contrib',
+        ),
+      ),
+      'projects' => array(),
+      'libraries' => array(),
+    );
+
+    // The make generation function requires that projects be grouped by type,
+    // or else duplicative project groups will be created.
+    $core = array();
+    $modules = array();
+    $themes = array();
+    $profiles = array();
+    $libraries = array();
+    foreach ($this->locker->getLockData()['packages'] as $package) {
+      if (strpos($package['name'], 'drupal/') === 0 && in_array($package['type'], array('drupal-core', 'drupal-theme', 'drupal-module', 'drupal-profile'))) {
+        $project_name = str_replace('drupal/', '', $package['name']);
+
+        switch ($package['type']) {
+          case 'drupal-core':
+            $project_name = 'drupal';
+            $group =& $core;
+            $group[$project_name]['type'] = 'core';
+            $info['core'] = substr($package['version'], 0, 1) . '.x';
+            break;
+          case 'drupal-theme':
+            $group =& $themes;
+            $group[$project_name]['type'] = 'theme';
+            break;
+          case 'drupal-module':
+            $group =& $modules;
+            $group[$project_name]['type'] = 'module';
+            break;
+          case 'drupal-profile':
+            $group =& $profiles;
+            $group[$project_name]['type'] = 'profile';
+            break;
+        }
+
+        $group[$project_name]['download']['type'] = 'git';
+        $group[$project_name]['download']['url'] = $package['source']['url'];
+        // Dev versions should use git branch + revision, otherwise a tag is used.
+        if (strstr($package['version'], 'dev')) {
+          // 'dev-' prefix indicates a branch-alias. Stripping the dev prefix from
+          // the branch name is sufficient.
+          // @see https://getcomposer.org/doc/articles/aliases.md
+          if (strpos($package['version'], 'dev-') === 0) {
+            $group[$project_name]['download']['branch'] = substr($package['version'], 4);
+          }
+          // Otherwise, leave as is. Version may already use '-dev' suffix.
+          else {
+            $group[$project_name]['download']['branch'] = $package['version'];
+          }
+          $group[$project_name]['download']['revision'] = $package['source']['reference'];
+        }
+        elseif ($package['type'] == 'drupal-core') {
+          // For 7.x tags, replace 7.xx.0 with 7.xx.
+          if ($info['core'] == '7.x') {
+            $group[$project_name]['download']['tag']= substr($package['version'], 0, 4);
+          }
+          else {
+            $group[$project_name]['download']['tag'] = $package['version'];
+          }
+        }
+        else {
+          // Make tag versioning drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
+          $major_version = substr($package['version'], 0 ,1);
+          $the_rest = substr($package['version'], 2, strlen($package['version']));
+          $group[$project_name]['download']['tag'] = "$major_version.x-$the_rest";
+        }
+
+        if (!empty($package['extra']['patches_applied'])) {
+          foreach ($package['extra']['patches_applied'] as $desc => $url) {
+            $group[$project_name]['patch'][] = $url;
+          }
+        }
+      }
+      // Include any non-drupal libraries that exist in both .lock and .json.
+      elseif (!in_array($package['type'], array('composer-plugin', 'metapackage'))
+        && array_key_exists($package['name'], $this->rootPackage->getRequires())) {
+        $project_name = $package['name'];
+        $libraries[$project_name]['type'] = 'library';
+        $libraries[$project_name]['download']['type'] = 'git';
+        $libraries[$project_name]['download']['url'] = $package['source']['url'];
+        $libraries[$project_name]['download']['branch'] = $package['version'];
+        $libraries[$project_name]['download']['revision'] = $package['source']['reference'];
+      }
+    }
+
+    $info['projects'] = $core + $modules + $themes;
+    $info['libraries'] = $libraries;
+
+    return $info;
   }
 
 }
