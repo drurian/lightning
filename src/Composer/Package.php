@@ -84,6 +84,8 @@ class Package {
           'subdir' => 'contrib',
         ],
       ],
+      'projects' => [],
+      'libraries' => [],
     ];
 
     // The make generation function requires that projects be grouped by type,
@@ -140,6 +142,8 @@ class Package {
       $info['download']['revision'] = $package['source']['reference'];
     }
     elseif ($package['type'] == 'drupal-core') {
+      // Always use drupal.org's core repository, or patches will not apply.
+      $info['download']['url'] = 'https://git.drupal.org/project/drupal.git';
       $info['download']['tag'] = $package['version'];
     }
     else {
