@@ -115,8 +115,8 @@ class Package {
             break;
         }
 
-        $group[$project_name]['download']['type'] = 'git';
-        $group[$project_name]['download']['url'] = $package['source']['url'];
+        $group[$project_name] += $this->makePackage($package);
+
         // Dev versions should use git branch + revision, otherwise a tag is used.
         if (strstr($package['version'], 'dev')) {
           // 'dev-' prefix indicates a branch-alias. Stripping the dev prefix from
@@ -151,10 +151,7 @@ class Package {
       elseif ($this->isLibrary($package)) {
         list(, $project_name) = explode('/', $package['name'], 2);
         $libraries[$project_name]['type'] = 'library';
-        $libraries[$project_name]['download']['type'] = 'git';
-        $libraries[$project_name]['download']['url'] = $package['source']['url'];
-        $libraries[$project_name]['download']['branch'] = $package['version'];
-        $libraries[$project_name]['download']['revision'] = $package['source']['reference'];
+        $libraries[$project_name] += $this->makePackage($package);
       }
     }
 
@@ -162,6 +159,17 @@ class Package {
     $info['libraries'] = $libraries;
 
     return $info;
+  }
+
+  protected function makePackage(array $package) {
+    return [
+      'download' => [
+        'type' => 'git',
+        'url' => $package['source']['url'],
+        'branch' => $package['version'],
+        'revision' => $package['source']['reference'],
+      ],
+    ];
   }
 
   /**
