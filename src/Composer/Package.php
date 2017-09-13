@@ -84,35 +84,33 @@ class Package {
           'subdir' => 'contrib',
         ],
       ],
-      'projects' => [],
-      'libraries' => [],
     ];
 
     // The make generation function requires that projects be grouped by type,
     // or else duplicative project groups will be created.
-    $projects = $libraries = [];
     foreach ($this->locker->getLockData()['packages'] as $package) {
+      list(, $name) = explode('/', $package['name'], 2);
+
       if ($this->isDrupalPackage($package)) {
-        $project = $this->makeProject($package);
-
-        $name = $package['type'] == 'drupal-core'
-          ? 'drupal'
-          : str_replace('drupal/', '', $package['name']);
-
-        $projects[$name] = $project;
+        if ($package['type'] == 'drupal-core') {
+          $name = 'drupal';
+        }
+        $info['projects'][$name] = $this->makeProject($package);
       }
       // Include any non-drupal libraries that exist in both .lock and .json.
       elseif ($this->isLibrary($package)) {
-        list(, $project_name) = explode('/', $package['name'], 2);
-        $libraries[$project_name]['type'] = 'library';
-        $libraries[$project_name] += $this->makePackage($package);
+        $info['libraries'][$name] = $this->makeLibrary($package);
       }
     }
 
-    $info['projects'] = $projects;
-    $info['libraries'] = $libraries;
-
     return $info;
+  }
+
+  protected function makeLibrary(array $package) {
+    $info = [
+      'type' => 'library',
+    ];
+    return $info + $this->makePackage($package);
   }
 
   protected function makeProject(array $package) {
