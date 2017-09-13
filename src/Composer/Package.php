@@ -93,7 +93,6 @@ class Package {
     $core = array();
     $modules = array();
     $themes = array();
-    $profiles = array();
     $libraries = array();
     foreach ($this->locker->getLockData()['packages'] as $package) {
       if (strpos($package['name'], 'drupal/') === 0 && in_array($package['type'], array('drupal-core', 'drupal-theme', 'drupal-module', 'drupal-profile'))) {
@@ -113,10 +112,6 @@ class Package {
           case 'drupal-module':
             $group =& $modules;
             $group[$project_name]['type'] = 'module';
-            break;
-          case 'drupal-profile':
-            $group =& $profiles;
-            $group[$project_name]['type'] = 'profile';
             break;
         }
 
