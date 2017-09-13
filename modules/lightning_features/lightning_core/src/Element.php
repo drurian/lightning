@@ -24,7 +24,7 @@ class Element {
    * @return array
    *   The merged array.
    */
-  public function mergeCanadian(array $a, array $b) {
+  public static function mergeCanadian(array $a, array $b) {
     $a += $b;
     foreach ($a as $k => $v) {
       if (is_array($v) && isset($b[$k]) && is_array($b[$k])) {

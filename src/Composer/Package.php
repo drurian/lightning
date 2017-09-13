@@ -93,31 +93,7 @@ class Package {
     $projects = $libraries = [];
     foreach ($this->locker->getLockData()['packages'] as $package) {
       if ($this->isDrupalPackage($package)) {
-        $project = $this->makeDrupalPackage($package);
-
-        // Dev versions should use git branch + revision, otherwise a tag is used.
-        if (strstr($package['version'], 'dev')) {
-          // 'dev-' prefix indicates a branch-alias. Stripping the dev prefix from
-          // the branch name is sufficient.
-          // @see https://getcomposer.org/doc/articles/aliases.md
-          if (strpos($package['version'], 'dev-') === 0) {
-            $project['download']['branch'] = substr($package['version'], 4);
-          }
-          // Otherwise, leave as is. Version may already use '-dev' suffix.
-          else {
-            $project['download']['branch'] = $package['version'];
-          }
-          $project['download']['revision'] = $package['source']['reference'];
-        }
-        elseif ($package['type'] == 'drupal-core') {
-          $project['download']['tag'] = $package['version'];
-        }
-        else {
-          // Make tag versioning Drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
-          $major_version = substr($package['version'], 0 ,1);
-          $the_rest = substr($package['version'], 2, strlen($package['version']));
-          $project['download']['tag'] = "$major_version.x-$the_rest";
-        }
+        $project = $this->makeProject($package);
 
         $name = $package['type'] == 'drupal-core'
           ? 'drupal'
@@ -139,7 +115,7 @@ class Package {
     return $info;
   }
 
-  protected function makeDrupalPackage(array $package) {
+  protected function makeProject(array $package) {
     $info = [];
 
     switch ($package['type']) {
@@ -149,7 +125,33 @@ class Package {
         $info['type'] = substr($package['type'], 7);
         break;
     }
-    return $info + $this->makePackage($package);
+    $info += $this->makePackage($package);
+
+    // Dev versions should use git branch + revision, otherwise a tag is used.
+    if (strstr($package['version'], 'dev')) {
+      // 'dev-' prefix indicates a branch-alias. Stripping the dev prefix from
+      // the branch name is sufficient.
+      // @see https://getcomposer.org/doc/articles/aliases.md
+      if (strpos($package['version'], 'dev-') === 0) {
+        $info['download']['branch'] = substr($package['version'], 4);
+      }
+      // Otherwise, leave as is. Version may already use '-dev' suffix.
+      else {
+        $info['download']['branch'] = $package['version'];
+      }
+      $info['download']['revision'] = $package['source']['reference'];
+    }
+    elseif ($package['type'] == 'drupal-core') {
+      $info['download']['tag'] = $package['version'];
+    }
+    else {
+      // Make tag versioning Drupal-friendly. 8.1.0-alpha1 => 8.x-1.0-alpha1.
+      $major_version = substr($package['version'], 0 ,1);
+      $the_rest = substr($package['version'], 2, strlen($package['version']));
+      $info['download']['tag'] = "$major_version.x-$the_rest";
+    }
+
+    return $info;
   }
 
   protected function makePackage(array $package) {
