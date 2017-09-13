@@ -77,7 +77,7 @@ class Package {
 
   protected function convert() {
     $info = [
-      'core' => [],
+      'core' => '8.x',
       'api' => 2,
       'defaults' => [
         'projects' => [
@@ -95,13 +95,8 @@ class Package {
       if ($this->isDrupalPackage($package)) {
         $project_name = str_replace('drupal/', '', $package['name']);
 
-        switch ($package['type']) {
-          case 'drupal-core':
-            $project_name = 'drupal';
-            $info['core'] = '8.x';
-            break;
-          default:
-            break;
+        if ($package['type'] == 'drupal-core') {
+          $project_name = 'drupal';
         }
 
         $projects[$project_name] = $this->makeDrupalPackage($package);
