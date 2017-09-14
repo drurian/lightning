@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "c76ff560c212c4ea06d9dd49b799b2c0",
+    "content-hash": "77c2eb2be052d90393746401b24771e7",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -2949,7 +2949,8 @@
                 },
                 "patches_applied": {
                     "2878684 - Use String.match to correlate regions when switching Layouts in Panels IPE": "https://www.drupal.org/files/issues/panels-ipe-2878684-3.patch",
-                    "2825034 - Form error messages do not appear in IPE": "https://www.drupal.org/files/issues/panels-ipe-propogate-errors-2825034-5.patch"
+                    "2825034 - Form error messages do not appear in IPE": "https://www.drupal.org/files/issues/panels-ipe-propogate-errors-2825034-5.patch",
+                    "2908897 - CategoryView leaves AJAX request marked active": "https://www.drupal.org/files/issues/2908897-2.patch"
                 }
             },
             "notification-url": "https://packages.drupal.org/8/downloads",
@@ -7932,7 +7933,8 @@
             "extra": {
                 "branch-alias": {
                     "dev-master": "9.0.x-dev"
-                }
+                },
+                "patches_applied": []
             },
             "autoload": {
                 "psr-4": {
