@@ -12,10 +12,28 @@ use Composer\Script\Event;
  */
 class Package {
 
+  /**
+   * The root Composer package (i.e., this composer.json).
+   *
+   * @var \Composer\Package\RootPackageInterface
+   */
   protected $rootPackage;
 
+  /**
+   * The locker.
+   *
+   * @var \Composer\Package\Locker
+   */
   protected $locker;
 
+  /**
+   * Package constructor.
+   *
+   * @param \Composer\Package\RootPackageInterface $root_package
+   *   The root package (i.e., this composer.json).
+   * @param \Composer\Package\Locker $locker
+   *   The locker.
+   */
   public function __construct(RootPackageInterface $root_package, Locker $locker) {
     $this->rootPackage = $root_package;
     $this->locker = $locker;
@@ -43,6 +61,15 @@ class Package {
     file_put_contents('drupal-org.make', $encoder->encode($make));
   }
 
+  /**
+   * Extracts a core-only make file from a complete make file.
+   *
+   * @param array $make
+   *   The complete make file.
+   *
+   * @return array
+   *   The core-only make file structure.
+   */
   protected function makeCore(array &$make) {
     $project = $make['projects']['drupal'];
     unset($make['projects']['drupal']);
@@ -56,6 +83,12 @@ class Package {
     ];
   }
 
+  /**
+   * Generates a complete make file structure from the root package.
+   *
+   * @return array
+   *   The complete make file structure.
+   */
   protected function make() {
     $info = [
       'core' => '8.x',
@@ -68,10 +101,9 @@ class Package {
       'projects' => [],
       'libraries' => [],
     ];
+    $lock = $this->locker->getLockData();
 
-    // The make generation function requires that projects be grouped by type,
-    // or else duplicative project groups will be created.
-    foreach ($this->locker->getLockData()['packages'] as $package) {
+    foreach ($lock['packages'] as $package) {
       list(, $name) = explode('/', $package['name'], 2);
 
       if ($this->isDrupalPackage($package)) {
@@ -89,6 +121,15 @@ class Package {
     return $info;
   }
 
+  /**
+   * Builds a make structure for a library (i.e., not a Drupal project).
+   *
+   * @param array $package
+   *   The Composer package definition.
+   *
+   * @return array
+   *   The generated make structure.
+   */
   protected function buildLibrary(array $package) {
     $info = [
       'type' => 'library',
@@ -96,6 +137,15 @@ class Package {
     return $info + $this->buildPackage($package);
   }
 
+  /**
+   * Builds a make structure for a Drupal module, theme, profile, or core.
+   *
+   * @param array $package
+   *   The Composer package definition.
+   *
+   * @return array
+   *   The generated make structure.
+   */
   protected function buildProject(array $package) {
     $info = [];
 
@@ -146,6 +196,15 @@ class Package {
     return $info;
   }
 
+  /**
+   * Builds a make structure for any kind of package.
+   *
+   * @param array $package
+   *   The Composer package definition.
+   *
+   * @return array
+   *   The generated make structure.
+   */
   protected function buildPackage(array $package) {
     $info = [
       'download' => [
